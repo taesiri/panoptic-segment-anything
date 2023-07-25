@@ -450,13 +450,13 @@ def generate_panoptic_mask(
     )
     annotations_json = json.dumps(annotations)
 
-    labelled_mask, labels = convert_masks_to_labelled_mask(subsection_label_pairs)
+    labelled_mask, seg_labels = convert_masks_to_labelled_mask(subsection_label_pairs)
     labelled_mask = labelled_mask.astype(np.uint8)
     labelled_mask_image = Image.fromarray(labelled_mask)
-    labels_dict = {label: index for index, label in enumerate(labels)}
+    labels_dict = {label: index for index, label in enumerate(seg_labels)}
+    labels_dict_json_str = json.dumps(labels_dict)
 
-
-    return (image_array, subsection_label_pairs), segmentation_bitmap, annotations_json, labelled_mask_image. labels_dict
+    return (image_array, subsection_label_pairs), segmentation_bitmap, annotations_json, labelled_mask_image, labels_dict_json_str
 
 config_file = "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
 ckpt_repo_id = "ShilongLiu/GroundingDINO"
@@ -560,7 +560,9 @@ if __name__ == "__main__":
                 with gr.Column():
                     annotated_image = gr.AnnotatedImage()
                     output_segmap = gr.Image(type="pil")
-                    output_seg_json = gr.JSON()
+                    output_seg_json = gr.Textbox(label="Segmentation JSON")
+
+
                     with gr.Accordion("Segmentation bitmap", open=False):
                         segmentation_bitmap_text = gr.Markdown(
                             """
