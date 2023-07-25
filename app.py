@@ -1,12 +1,13 @@
 import subprocess, os, sys
+# 
+# result = subprocess.run(["pip", "install", "-e", "GroundingDINO"], check=True)
+# print(f"pip install GroundingDINO = {result}")
 
-result = subprocess.run(["pip", "install", "-e", "GroundingDINO"], check=True)
-print(f"pip install GroundingDINO = {result}")
-
-result = subprocess.run(["pip", "install", "gradio==3.27.0"], check=True)
-print(f"pip install gradio==3.27.0 = {result}")
+# result = subprocess.run(["pip", "install", "gradio==3.27.0"], check=True)
+# print(f"pip install gradio==3.27.0 = {result}")
 
 sys.path.insert(0, "./GroundingDINO")
+sys.path.insert(0, "./segment_anything")
 
 if not os.path.exists("./sam_vit_h_4b8939.pth"):
     result = subprocess.run(
@@ -18,6 +19,9 @@ if not os.path.exists("./sam_vit_h_4b8939.pth"):
     )
     print(f"wget sam_vit_h_4b8939.pth result = {result}")
 
+
+import tempfile
+import pickle
 
 import argparse
 import random
@@ -49,6 +53,14 @@ from segment_anything import build_sam, SamPredictor
 
 # CLIPSeg
 from transformers import CLIPSegProcessor, CLIPSegForImageSegmentation
+
+
+def convert_masks_to_labelled_mask(mask_label_pairs):
+    masks, labels = zip(*mask_label_pairs)
+    combined_mask = np.zeros_like(masks[0])
+    for i, mask in enumerate(masks, start=1):
+        combined_mask[mask.astype(bool)] = i
+    return combined_mask, labels
 
 
 def load_model_hf(model_config_path, repo_id, filename, device):
@@ -438,8 +450,26 @@ def generate_panoptic_mask(
     )
     annotations_json = json.dumps(annotations)
 
-    return (image_array, subsection_label_pairs), segmentation_bitmap, annotations_json
+    labelled_mask, labels = convert_masks_to_labelled_mask(subsection_label_pairs)
+    labelled_mask = labelled_mask.astype(np.uint8)
 
+    # # Convert the numpy array to a PIL image
+    labelled_mask_image = Image.fromarray(labelled_mask)
+
+    # convert labelled_mask to PIL image
+
+    # Create a dictionary to store all the required information
+    # output_dict = {
+    #     'labelled_mask': labelled_mask,
+    #     'labels': labels,
+    #     'annotations_json': annotations_json
+    # }
+
+    # output_file = tempfile.NamedTemporaryFile(delete=False)
+    # with open(output_file.name, 'wb') as f:
+    #     pickle.dump(output_dict, f)
+
+    return (image_array, subsection_label_pairs), segmentation_bitmap, annotations_json, labelled_mask_image
 
 config_file = "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
 ckpt_repo_id = "ShilongLiu/GroundingDINO"
@@ -542,6 +572,8 @@ if __name__ == "__main__":
 
                 with gr.Column():
                     annotated_image = gr.AnnotatedImage()
+                    output_segmap = gr.Image(type="pil")
+                    output_file = gr.File()
                     with gr.Accordion("Segmentation bitmap", open=False):
                         segmentation_bitmap_text = gr.Markdown(
                             """
@@ -577,7 +609,7 @@ Because of the large dynamic range, the segmentation bitmap appears black in the
                     thing_category_names_string,
                     stuff_category_names_string,
                 ],
-                outputs=[annotated_image, segmentation_bitmap, annotations_json],
+                outputs=[annotated_image, segmentation_bitmap, annotations_json, output_segmap],
                 cache_examples=True,
             )
 
@@ -594,8 +626,8 @@ Because of the large dynamic range, the segmentation bitmap appears black in the
                 num_samples_factor,
                 task_attributes_json,
             ],
-            outputs=[annotated_image, segmentation_bitmap, annotations_json],
+            outputs=[annotated_image, segmentation_bitmap, annotations_json, output_segmap],
             api_name="segment",
         )
 
-    block.launch(server_name="0.0.0.0", debug=args.debug, share=args.share)
+    block.launch(server_name="0.0.0.0", server_port=30005, debug=args.debug, share=args.share)
