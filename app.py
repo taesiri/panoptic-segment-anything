@@ -452,24 +452,11 @@ def generate_panoptic_mask(
 
     labelled_mask, labels = convert_masks_to_labelled_mask(subsection_label_pairs)
     labelled_mask = labelled_mask.astype(np.uint8)
-
-    # # Convert the numpy array to a PIL image
     labelled_mask_image = Image.fromarray(labelled_mask)
+    labels_dict = {label: index for index, label in enumerate(labels)}
 
-    # convert labelled_mask to PIL image
 
-    # Create a dictionary to store all the required information
-    # output_dict = {
-    #     'labelled_mask': labelled_mask,
-    #     'labels': labels,
-    #     'annotations_json': annotations_json
-    # }
-
-    # output_file = tempfile.NamedTemporaryFile(delete=False)
-    # with open(output_file.name, 'wb') as f:
-    #     pickle.dump(output_dict, f)
-
-    return (image_array, subsection_label_pairs), segmentation_bitmap, annotations_json, labelled_mask_image
+    return (image_array, subsection_label_pairs), segmentation_bitmap, annotations_json, labelled_mask_image. labels_dict
 
 config_file = "GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
 ckpt_repo_id = "ShilongLiu/GroundingDINO"
@@ -573,7 +560,7 @@ if __name__ == "__main__":
                 with gr.Column():
                     annotated_image = gr.AnnotatedImage()
                     output_segmap = gr.Image(type="pil")
-                    output_file = gr.File()
+                    output_seg_json = gr.JSON()
                     with gr.Accordion("Segmentation bitmap", open=False):
                         segmentation_bitmap_text = gr.Markdown(
                             """
@@ -609,7 +596,7 @@ Because of the large dynamic range, the segmentation bitmap appears black in the
                     thing_category_names_string,
                     stuff_category_names_string,
                 ],
-                outputs=[annotated_image, segmentation_bitmap, annotations_json, output_segmap],
+                outputs=[annotated_image, segmentation_bitmap, annotations_json, output_segmap, output_seg_json],
                 cache_examples=True,
             )
 
@@ -626,7 +613,7 @@ Because of the large dynamic range, the segmentation bitmap appears black in the
                 num_samples_factor,
                 task_attributes_json,
             ],
-            outputs=[annotated_image, segmentation_bitmap, annotations_json, output_segmap],
+            outputs=[annotated_image, segmentation_bitmap, annotations_json, output_segmap, output_seg_json],
             api_name="segment",
         )
 
