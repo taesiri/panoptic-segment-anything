@@ -453,7 +453,7 @@ def generate_panoptic_mask(
     labelled_mask, seg_labels = convert_masks_to_labelled_mask(subsection_label_pairs)
     labelled_mask = labelled_mask.astype(np.uint8)
     labelled_mask_image = Image.fromarray(labelled_mask)
-    labels_dict = {int(index): label  for index, label in enumerate(seg_labels)}
+    labels_dict = {int(index)+1: label  for index, label in enumerate(seg_labels)}
     labels_dict_json_str = json.dumps(labels_dict)
 
     return (image_array, subsection_label_pairs), segmentation_bitmap, annotations_json, labelled_mask_image, labels_dict_json_str
